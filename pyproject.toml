@@ -3,4 +3,5 @@ name = "model-release-benchmark"
 version = "0.1.0"
 description = "Public release-over-release benchmark for GPT, Gemini and Claude"
 requires-python = ">=3.11"
+license = { text = "MIT" }
 dependencies = []

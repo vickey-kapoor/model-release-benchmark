@@ -1,5 +1,8 @@
 # Model release benchmark
 
+[![tests](https://github.com/vickey-kapoor/model-release-benchmark/actions/workflows/tests.yml/badge.svg)](https://github.com/vickey-kapoor/model-release-benchmark/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Results: CC BY 4.0](https://img.shields.io/badge/results-CC%20BY%204.0-lightgrey)](https://creativecommons.org/licenses/by/4.0/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)](pyproject.toml)
 [![Status: pre-release, no published results](https://img.shields.io/badge/status-pre--release-orange)](BENCHMARK_PLAN.md)
@@ -57,3 +60,6 @@ python -m benchmark drift --baseline results/sentinel-old --current results/sent
 ```
 
 For later writing batches, pass `--anchor-run` to `grade-export` to mix blind archived outputs into the packet. This shows whether graders' standards are shifting.
+
+## License
+The code is under the [MIT License](LICENSE). Published results (the output of `export`, `report` and `site`) are under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Model outputs inside them may also be subject to each vendor's terms.
