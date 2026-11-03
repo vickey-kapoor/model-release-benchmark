@@ -88,7 +88,9 @@ def cmd_run(args):
 
 
 def cmd_score(args):
-    print(json.dumps(score_run(args.run_dir, load_checked_suite(args.suite), allow_code_exec=args.allow_code_exec), indent=2))
+    summary = score_run(args.run_dir, load_checked_suite(args.suite), allow_code_exec=args.allow_code_exec,
+                        workers=args.workers)
+    print(json.dumps(summary, indent=2))
 
 
 def cmd_grade_export(args):
@@ -153,6 +155,8 @@ def build_parser():
     sub.add_argument("--run-dir", required=True)
     sub.add_argument("--allow-code-exec", action="store_true",
                      help="run model-written code; only do this inside a disposable container or VM")
+    sub.add_argument("--workers", type=int, default=8,
+                     help="records scored at once; keep it at or below the CPUs available to coding tests")
 
     sub = command("grade-export", cmd_grade_export, "create a blind grading packet")
     sub.add_argument("--suite", required=True)

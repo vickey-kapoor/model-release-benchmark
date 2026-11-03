@@ -22,7 +22,7 @@
     "category": "reasoning",
     "difficulty": "medium",
     "prompt": "A train leaves at 09:40 and travels 150 km at 60 km/h. It stops for 20 minutes, then travels 90 km at 90 km/h. At what 24-hour time does it arrive? End with a final line in the form 'ANSWER: HH:MM'.",
-    "answers": ["13:00"]
+    "answers": ["13:30"]
   },
   {
     "id": "example-reasoning-trap",
