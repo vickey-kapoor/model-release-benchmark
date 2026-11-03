@@ -14,6 +14,7 @@ python -m unittest discover tests              # all tests
 python -m unittest tests.test_benchmark.ScoringTests.test_answer_normalization   # single test
 python -m benchmark validate --suite tasks/examples
 python -m benchmark run ... --dry-run          # show the planned run count without calling any API
+python scripts/sandbox_score.py --suite tasks/examples --run-dir results/<run>   # score coding tasks inside a locked-down Docker container (see Dockerfile)
 ```
 
 There's no linter or build step. Real runs need `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and `GEMINI_API_KEY`, plus `--budget-usd`. Don't start a paid run unless the user asks for one.

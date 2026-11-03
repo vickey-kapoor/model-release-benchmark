@@ -1,0 +1,5 @@
+# Only benchmark/ is copied into the image. Keep everything else, above all
+# secrets and private data, out of the build context entirely.
+*
+!benchmark/
+benchmark/**/__pycache__
