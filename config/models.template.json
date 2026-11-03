@@ -1,0 +1,44 @@
+{
+  "max_output_tokens": 16000,
+  "models": [
+    {
+      "id": "openai-flagship-current",
+      "label": "REPLACE display name",
+      "provider": "openai",
+      "api_model": "REPLACE pinned model ID",
+      "vendor": "OpenAI",
+      "tier": "flagship",
+      "released": "REPLACE YYYY-MM-DD",
+      "status": "ga",
+      "predecessor": "REPLACE id of the previous model, or null",
+      "price_input_per_mtok": "REPLACE list price per million input tokens, as a number",
+      "price_output_per_mtok": "REPLACE list price per million output tokens, as a number"
+    },
+    {
+      "id": "google-flagship-current",
+      "label": "REPLACE display name",
+      "provider": "google",
+      "api_model": "REPLACE pinned model ID",
+      "vendor": "Google",
+      "tier": "flagship",
+      "released": "REPLACE YYYY-MM-DD",
+      "status": "ga",
+      "predecessor": "REPLACE id of the previous model, or null",
+      "price_input_per_mtok": "REPLACE list price per million input tokens, as a number",
+      "price_output_per_mtok": "REPLACE list price per million output tokens, as a number"
+    },
+    {
+      "id": "anthropic-flagship-current",
+      "label": "REPLACE display name",
+      "provider": "anthropic",
+      "api_model": "REPLACE pinned model ID",
+      "vendor": "Anthropic",
+      "tier": "flagship",
+      "released": "REPLACE YYYY-MM-DD",
+      "status": "ga",
+      "predecessor": "REPLACE id of the previous model, or null",
+      "price_input_per_mtok": "REPLACE list price per million input tokens, as a number",
+      "price_output_per_mtok": "REPLACE list price per million output tokens, as a number"
+    }
+  ]
+}

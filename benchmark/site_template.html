@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model Release Tracker</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6f6d68;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,.10);
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a;
+  --good: #006300; --critical: #d03b3b; --warning: #fab219;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #a09e96;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+    --good: #0ca30c; --critical: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #a09e96;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+  --good: #0ca30c; --critical: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 56px; }
+h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; font-weight: 650; }
+h2 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+p { margin: 0; }
+.lede { color: var(--ink-2); max-width: 68ch; }
+.banner { margin-top: 16px; padding: 10px 14px; border: 1px solid var(--warning); border-left-width: 4px; border-radius: 6px; background: var(--surface); font-weight: 550; }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0 16px; }
+label.filter { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ink-2); }
+select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 6px; padding: 6px 8px; min-width: 150px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 16px; }
+.sub { color: var(--ink-2); font-size: 13px; margin-bottom: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--ink-2); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key { width: 16px; height: 2px; border-radius: 1px; display: inline-block; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart svg:focus-visible, .chart g:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.direct { fill: var(--ink-2); font-size: 12px; }
+.tooltip { position: absolute; z-index: 2; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,.14); padding: 8px 10px; font-size: 13px; min-width: 170px; display: none; }
+.tooltip .head { color: var(--ink-2); margin-bottom: 4px; }
+.tooltip .row { display: flex; align-items: center; gap: 8px; }
+.tooltip strong { font-weight: 650; min-width: 34px; }
+.tooltip .name { color: var(--ink-2); }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 860px; }
+th, td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--ink-2); font-weight: 550; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mono { color: var(--ink-2); font-size: 12px; }
+th:first-child, td:first-child { min-width: 130px; }
+th:nth-child(5), th:nth-child(6) { min-width: 180px; }
+.status { display: block; margin-bottom: 2px; }
+.status.up { color: var(--good); }
+.status.down { color: var(--critical); }
+.status.flat { color: var(--ink-2); }
+.note { color: var(--ink-2); font-size: 13px; margin-top: 10px; }
+footer { color: var(--ink-2); font-size: 13px; margin-top: 24px; overflow-wrap: anywhere; }
+footer p { margin-bottom: 6px; }
+a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Model Release Tracker</h1>
+  <p class="lede">How each new GPT, Gemini and Claude release changes against its predecessor and other vendors' current models, on one fixed task suite.</p>
+  <div class="banner" id="banner" hidden>Synthetic demo data from mock models. These scores don't describe any real model.</div>
+
+  <div class="filters">
+    <label class="filter">Model tier <select id="tier"></select></label>
+    <label class="filter">Measure <select id="metric"></select></label>
+    <label class="filter">Second chart compares with <select id="xmetric">
+      <option value="cost">Cost per run</option>
+      <option value="time">Median total time</option>
+    </select></label>
+  </div>
+
+  <section class="card">
+    <h2 id="trend-title"></h2>
+    <p class="sub">Score from 0 to 100 by release date. Each point is one generally available model.</p>
+    <div class="legend" id="legend-trend"></div>
+    <div class="chart" id="trend"></div>
+  </section>
+
+  <section class="card">
+    <h2 id="scatter-title"></h2>
+    <p class="sub" id="scatter-sub"></p>
+    <div class="legend" id="legend-scatter"></div>
+    <div class="chart" id="scatter"></div>
+  </section>
+
+  <section class="card">
+    <h2>All results</h2>
+    <p class="sub">Result labels use corrected intervals. "No clear change" means the benchmark couldn't detect a difference, not that the models are equal.</p>
+    <div class="table-wrap"><table id="table"></table></div>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+<script id="site-data" type="application/json">/*__DATA__*/null</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("site-data").textContent);
+const SVG_NS = "http://www.w3.org/2000/svg";
+const $ = id => document.getElementById(id);
+const colorOf = vendor => `var(--series-${DATA.vendors.indexOf(vendor) + 1})`;
+const ga = () => DATA.models.filter(m => m.tier === $("tier").value && m.status === "ga");
+const metricLabel = id => DATA.metrics.find(m => m.id === id).label;
+const score = (m, metric) => m.scores[metric] ? m.scores[metric].score * 100 : null;
+const day = iso => Date.parse(iso + "T00:00:00Z");
+const monthFmt = new Intl.DateTimeFormat("en", { month: "short", year: "numeric", timeZone: "UTC" });
+const dayFmt = new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
+function el(name, attrs = {}, text) {
+  const node = document.createElementNS(SVG_NS, name);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function html(name, className, text) {
+  const node = document.createElement(name);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function rangeTicks(min, max, count) {
+  const span = max > min ? max - min : Math.max(max, 1) * 0.2;
+  const raw = span / count;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].find(s => s * mag >= raw) * mag;
+  const start = Math.max(0, Math.floor((min - step * 0.25) / step) * step);
+  const ticks = [];
+  for (let v = start; v < max + step * 1.25; v += step) ticks.push(+v.toFixed(6));
+  return ticks;
+}
+
+function renderLegend(id, vendors) {
+  const box = $(id);
+  box.replaceChildren();
+  for (const vendor of vendors) {
+    const item = html("span");
+    const key = html("i", "key");
+    key.style.background = colorOf(vendor);
+    item.append(key, document.createTextNode(vendor));
+    box.append(item);
+  }
+}
+
+function makeTooltip(box) {
+  const tip = html("div", "tooltip");
+  box.append(tip);
+  return {
+    show(head, rows, x, y) {
+      tip.replaceChildren(html("div", "head", head));
+      for (const row of rows) {
+        const line = html("div", "row");
+        const key = html("i", "key");
+        key.style.background = row.color;
+        line.append(key, html("strong", "", row.value), html("span", "name", row.name));
+        tip.append(line);
+      }
+      tip.style.display = "block";
+      const width = tip.offsetWidth;
+      tip.style.left = Math.max(0, Math.min(box.clientWidth - width, x + 14 + width > box.clientWidth ? x - width - 14 : x + 14)) + "px";
+      tip.style.top = Math.max(0, y - 10) + "px";
+    },
+    hide() { tip.style.display = "none"; },
+  };
+}
+
+function yAxis(svg, y, left, right) {
+  for (const value of [0, 25, 50, 75, 100]) {
+    svg.append(el("line", { x1: left, x2: right, y1: y(value), y2: y(value), stroke: value === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+    svg.append(el("text", { x: left - 8, y: y(value) + 4, "text-anchor": "end", class: "tick" }, value));
+  }
+}
+
+function renderTrend() {
+  const box = $("trend");
+  box.replaceChildren();
+  const metric = $("metric").value;
+  const models = ga().filter(m => score(m, metric) !== null);
+  $("trend-title").textContent = `${metricLabel(metric)} by release`;
+  const vendors = DATA.vendors.filter(v => models.some(m => m.vendor === v));
+  renderLegend("legend-trend", vendors);
+  if (!models.length) { box.append(html("p", "note", "No results for this selection yet.")); return; }
+  const width = box.clientWidth, height = 320, narrow = width < 560;
+  const m = { top: 14, right: narrow ? 14 : 136, bottom: 30, left: 38 };
+  const times = [...new Set(models.map(d => day(d.released)))].sort((a, b) => a - b);
+  const [t0, t1] = [times[0], times[times.length - 1]];
+  const x = t => t1 === t0 ? (m.left + width - m.right) / 2 : m.left + (t - t0) / (t1 - t0) * (width - m.left - m.right);
+  const y = v => m.top + (100 - v) / 100 * (height - m.top - m.bottom);
+  const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img", tabindex: 0, "aria-label": `${metricLabel(metric)} by release date. Use the left and right arrow keys to read values. All values are also in the table below.` });
+  yAxis(svg, y, m.left, width - m.right);
+  const tickCount = narrow ? 3 : 5;
+  for (let i = 0; i < tickCount; i++) {
+    const t = t1 === t0 ? t0 : t0 + (t1 - t0) * i / (tickCount - 1);
+    const anchor = i === 0 && t1 !== t0 ? "start" : i === tickCount - 1 && t1 !== t0 ? "end" : "middle";
+    svg.append(el("text", { x: x(t), y: height - 8, "text-anchor": anchor, class: "tick" }, monthFmt.format(t)));
+    if (t1 === t0) break;
+  }
+  const series = vendors.map(vendor => ({ vendor, points: models.filter(d => d.vendor === vendor).sort((a, b) => day(a.released) - day(b.released)) }));
+  for (const s of series) {
+    svg.append(el("polyline", { points: s.points.map(d => `${x(day(d.released))},${y(score(d, metric))}`).join(" "), fill: "none", stroke: colorOf(s.vendor), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  }
+  for (const s of series) for (const d of s.points) {
+    svg.append(el("circle", { cx: x(day(d.released)), cy: y(score(d, metric)), r: 4, fill: colorOf(s.vendor), stroke: "var(--surface)", "stroke-width": 2 }));
+  }
+  if (!narrow) {
+    // Labels that would collide are dropped, not nudged; the legend and table still carry them.
+    const placed = [];
+    for (const s of [...series].sort((a, b) => score(b.points.at(-1), metric) - score(a.points.at(-1), metric))) {
+      const last = s.points.at(-1), py = y(score(last, metric));
+      if (placed.some(p => Math.abs(p - py) < 16)) continue;
+      placed.push(py);
+      svg.append(el("text", { x: x(day(last.released)) + 10, y: py + 4, class: "direct" }, `${s.vendor} ${score(last, metric).toFixed(1)}`));
+    }
+  }
+  const cross = el("line", { y1: m.top, y2: height - m.bottom, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" });
+  svg.append(cross);
+  box.append(svg);
+  const tip = makeTooltip(box);
+  const showAt = index => {
+    const t = times[index], px = x(t);
+    cross.setAttribute("x1", px); cross.setAttribute("x2", px); cross.setAttribute("visibility", "visible");
+    const rows = [];
+    for (const s of series) {
+      const known = s.points.filter(d => day(d.released) <= t).at(-1);
+      if (known) rows.push({ color: colorOf(s.vendor), value: score(known, metric).toFixed(1), name: known.label });
+    }
+    tip.show(dayFmt.format(t), rows, px, m.top);
+  };
+  const nearest = px => times.reduce((best, t, i) => Math.abs(x(t) - px) < Math.abs(x(times[best]) - px) ? i : best, 0);
+  let current = times.length - 1;
+  svg.addEventListener("pointermove", e => {
+    const rect = svg.getBoundingClientRect();
+    current = nearest((e.clientX - rect.left) * width / rect.width);
+    showAt(current);
+  });
+  const hide = () => { tip.hide(); cross.setAttribute("visibility", "hidden"); };
+  svg.addEventListener("pointerleave", hide);
+  svg.addEventListener("blur", hide);
+  svg.addEventListener("focus", () => showAt(current));
+  svg.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      current = Math.max(0, Math.min(times.length - 1, current + (e.key === "ArrowLeft" ? -1 : 1)));
+      showAt(current);
+    }
+  });
+}
+
+function renderScatter() {
+  const box = $("scatter");
+  box.replaceChildren();
+  const metric = $("metric").value;
+  const isCost = $("xmetric").value === "cost";
+  const value = d => isCost ? d.operations.mean_cost_usd : d.operations.median_seconds;
+  const format = v => isCost ? `$${v < 0.1 ? v.toFixed(4) : v.toFixed(2)}` : `${v.toFixed(1)}s`;
+  const axisFormat = v => isCost ? `$${v}` : `${v}s`;
+  const models = ga().filter(d => score(d, metric) !== null && value(d) !== null);
+  $("scatter-title").textContent = `${metricLabel(metric)} vs. ${isCost ? "cost" : "speed"}`;
+  const vendors = DATA.vendors.filter(v => models.some(d => d.vendor === v));
+  renderLegend("legend-scatter", vendors);
+  if (!models.length) { box.append(html("p", "note", "No results for this selection yet.")); return; }
+  const width = box.clientWidth, height = 320;
+  const m = { top: 14, right: 18, bottom: 30, left: 38 };
+  const values = models.map(value);
+  const ticks = rangeTicks(Math.min(...values), Math.max(...values), width < 560 ? 3 : 5);
+  const xMin = ticks[0], xMax = ticks[ticks.length - 1];
+  const x = v => m.left + (v - xMin) / (xMax - xMin) * (width - m.left - m.right);
+  const y = v => m.top + (100 - v) / 100 * (height - m.top - m.bottom);
+  const axisNote = xMin > 0 ? " The horizontal axis doesn't start at zero." : "";
+  $("scatter-sub").textContent = (isCost ? "Higher and further left is better. Cost uses the list prices recorded for each run." : "Higher and further left is better. Time is the median total for a run, across tool steps.") + axisNote;
+  const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img", "aria-label": `${metricLabel(metric)} against ${isCost ? "cost" : "time"}. All values are also in the table below.` });
+  yAxis(svg, y, m.left, width - m.right);
+  for (const tick of ticks) svg.append(el("text", { x: x(tick), y: height - 8, "text-anchor": tick === xMin ? "start" : tick === xMax ? "end" : "middle", class: "tick" }, axisFormat(tick)));
+  box.append(svg);
+  const tip = makeTooltip(box);
+  const placed = [];
+  const dots = models.map(d => ({ id: d.id, x: x(value(d)), y: y(score(d, metric)) }));
+  for (const d of [...models].sort((a, b) => score(b, metric) - score(a, metric))) {
+    const px = x(value(d)), py = y(score(d, metric));
+    const group = el("g", { tabindex: 0, role: "img", "aria-label": `${d.label}: score ${score(d, metric).toFixed(1)}, ${format(value(d))}` });
+    group.append(el("circle", { cx: px, cy: py, r: 12, fill: "transparent" }));
+    group.append(el("circle", { cx: px, cy: py, r: 4, fill: colorOf(d.vendor), stroke: "var(--surface)", "stroke-width": 2 }));
+    const open = () => tip.show(d.label, [
+      { color: colorOf(d.vendor), value: score(d, metric).toFixed(1), name: "score" },
+      { color: "var(--axis)", value: format(value(d)), name: isCost ? "per run" : "median time" },
+    ], px, py);
+    group.addEventListener("pointerenter", open);
+    group.addEventListener("focus", open);
+    group.addEventListener("pointerleave", tip.hide);
+    group.addEventListener("blur", tip.hide);
+    svg.append(group);
+    if (width >= 560) {
+      const labelWidth = d.label.length * 6.4;
+      const flip = px + 10 + labelWidth > width - m.right;
+      const left = flip ? px - 10 - labelWidth : px + 10;
+      const hitsLabel = placed.some(p => Math.abs(p.y - py) < 15 && left < p.left + p.width && p.left < left + labelWidth);
+      const hitsDot = dots.some(o => o.id !== d.id && Math.abs(o.y - py) < 12 && o.x > left - 6 && o.x < left + labelWidth + 6);
+      if (!hitsLabel && !hitsDot) {
+        placed.push({ y: py, left, width: labelWidth });
+        svg.append(el("text", { x: flip ? px - 10 : px + 10, y: py + 4, "text-anchor": flip ? "end" : "start", class: "direct" }, d.label));
+      }
+    }
+  }
+}
+
+function statusCell(comparison, metric) {
+  const result = comparison.metrics[metric];
+  if (!result) return html("span", "status flat", `${comparison.against}: no data`);
+  const kinds = { Improved: ["up", "▲", "Ahead"], Regressed: ["down", "▼", "Behind"], "No clear change": ["flat", "●", "No clear difference"] };
+  const [kind, icon, rivalLabel] = kinds[result.label];
+  const label = comparison.kind === "rival" ? rivalLabel : result.label;
+  const diff = result.difference * 100;
+  return html("span", `status ${kind}`, `${icon} ${label} ${diff >= 0 ? "+" : ""}${diff.toFixed(1)} vs. ${comparison.against}`);
+}
+
+function renderTable() {
+  const table = $("table");
+  table.replaceChildren();
+  const metric = $("metric").value;
+  const head = table.createTHead().insertRow();
+  for (const title of ["Model", "Released", "Score", "95% interval", "Against predecessor", "Against current rivals", "Cost per run", "Median time", "Errors", "Refusals"]) {
+    head.append(html("th", "", title));
+  }
+  const body = table.createTBody();
+  const rows = DATA.models.filter(m => m.tier === $("tier").value).sort((a, b) => day(b.released) - day(a.released));
+  for (const d of rows) {
+    const row = body.insertRow();
+    const name = row.insertCell();
+    name.append(document.createTextNode(d.label + (d.status === "ga" ? "" : " (preview)")), html("div", "mono", d.vendor));
+    const add = (text, className) => { const c = row.insertCell(); c.textContent = text; if (className) c.className = className; };
+    add(d.released, "num");
+    const s = d.scores[metric];
+    add(s ? (s.score * 100).toFixed(1) : "–", "num");
+    add(s ? `${(s.low * 100).toFixed(1)} to ${(s.high * 100).toFixed(1)}` : "–", "num");
+    for (const kind of ["predecessor", "rival"]) {
+      const cell = row.insertCell();
+      const list = d.comparisons.filter(c => c.kind === kind);
+      if (!list.length) cell.textContent = "–";
+      for (const c of list) cell.append(statusCell(c, metric));
+    }
+    const o = d.operations;
+    add(o.mean_cost_usd === null ? "–" : `$${o.mean_cost_usd.toFixed(4)}`, "num");
+    add(o.median_seconds === null ? "–" : `${o.median_seconds.toFixed(1)}s`, "num");
+    add(`${(o.error_rate * 100).toFixed(1)}%`, "num");
+    add(`${(o.refusal_rate * 100).toFixed(1)}%`, "num");
+  }
+}
+
+function render() { renderTrend(); renderScatter(); renderTable(); }
+
+function init() {
+  $("banner").hidden = !DATA.synthetic;
+  const tiers = [...new Set(DATA.models.map(m => m.tier))].sort();
+  for (const tier of tiers) $("tier").add(new Option(tier[0].toUpperCase() + tier.slice(1), tier));
+  if (tiers.includes("flagship")) $("tier").value = "flagship";
+  for (const m of DATA.metrics) $("metric").add(new Option(m.label, m.id));
+  $("metric").value = "overall";
+  for (const id of ["tier", "metric", "xmetric"]) $(id).addEventListener("change", render);
+  const footer = $("footer");
+  footer.append(html("p", "", `Suite ${DATA.suite_version}, generated ${DATA.generated_at}. Results apply only to the listed model IDs and test period.`));
+  footer.append(html("p", "", `Private task commitment (SHA-256): ${DATA.private_hash}`));
+  if (DATA.repo_url && /^https:\/\//.test(DATA.repo_url)) {
+    const link = html("a", "", "Methods, raw data and corrections");
+    link.href = DATA.repo_url;
+    const line = html("p");
+    line.append(link);
+    footer.append(line);
+  }
+  render();
+  let timer;
+  window.addEventListener("resize", () => { clearTimeout(timer); timer = setTimeout(() => { renderTrend(); renderScatter(); }, 120); });
+}
+init();
+</script>
+</body>
+</html>

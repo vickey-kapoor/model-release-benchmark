@@ -1,0 +1,71 @@
+[
+  {
+    "id": "example-coding",
+    "category": "coding",
+    "difficulty": "easy",
+    "prompt": "This function should return the largest value in a list, but it fails on lists of negative numbers:\n\ndef largest(values):\n    best = 0\n    for value in values:\n        if value > best:\n            best = value\n    return best\n\nReturn the corrected function in a Python code block.",
+    "reference_solution": "def largest(values):\n    best = values[0]\n    for value in values:\n        if value > best:\n            best = value\n    return best",
+    "test_code": "import unittest\nfrom solution import largest\n\n\nclass TestLargest(unittest.TestCase):\n    def test_negative(self):\n        self.assertEqual(largest([-5, -2, -9]), -2)\n\n    def test_positive(self):\n        self.assertEqual(largest([1, 7, 3]), 7)\n"
+  },
+  {
+    "id": "example-extraction",
+    "category": "extraction",
+    "difficulty": "easy",
+    "prompt": "Extract the invoice number and total from this text. Reply with only a JSON object with the keys invoice_number (string) and total (number).\n\nThanks for your order. Invoice INV-2041 is attached, and the amount due is 318.50 USD.",
+    "expected": {
+      "invoice_number": "INV-2041",
+      "total": 318.5
+    }
+  },
+  {
+    "id": "example-reasoning",
+    "category": "reasoning",
+    "difficulty": "medium",
+    "prompt": "A train leaves at 09:40 and travels 150 km at 60 km/h. It stops for 20 minutes, then travels 90 km at 90 km/h. At what 24-hour time does it arrive? End with a final line in the form 'ANSWER: HH:MM'.",
+    "answers": ["13:00"]
+  },
+  {
+    "id": "example-reasoning-trap",
+    "category": "reasoning",
+    "difficulty": "medium",
+    "trap": true,
+    "prompt": "A shop sold 40 mugs on Monday and twice as many on Tuesday. How much profit did it make per mug? If the information given isn't enough, end with 'ANSWER: UNANSWERABLE'. Otherwise, end with 'ANSWER: <amount>'.",
+    "answers": ["UNANSWERABLE"]
+  },
+  {
+    "id": "example-document",
+    "category": "document",
+    "difficulty": "easy",
+    "prompt": "According to the document, what year did the library reopen? Reply with only a JSON object with the keys answer (string) and citations (a list of exact quotes from the document). If the document doesn't say, set answer to UNANSWERABLE.",
+    "document": "The town library closed for repairs in 2018 after flood damage to its lower floor. It reopened in 2021 with a new reading room.",
+    "answers": ["2021"],
+    "reference_citation": "It reopened in 2021"
+  },
+  {
+    "id": "example-tool-use",
+    "category": "tool_use",
+    "difficulty": "easy",
+    "prompt": "Customer ticket-17 was resolved today. Update its status record to closed, and make no other changes.",
+    "tools": [
+      {"name": "list_records", "description": "List all record names", "op": "list"},
+      {"name": "read_record", "description": "Read one record", "op": "read"},
+      {"name": "write_record", "description": "Create or replace one record", "op": "write"}
+    ],
+    "initial_state": {
+      "ticket-16": "open",
+      "ticket-17": "open"
+    },
+    "expected_state": {
+      "ticket-16": "open",
+      "ticket-17": "closed"
+    },
+    "max_steps": 6
+  },
+  {
+    "id": "example-writing",
+    "category": "writing",
+    "difficulty": "medium",
+    "prompt": "Rewrite this for a new employee in under 80 words: 'Per policy 4.2, expense submissions lacking itemized documentation shall be returned to the originator for remediation prior to reimbursement processing.'",
+    "rubric": "1 = misleading or unusable; 2 = major errors; 3 = accurate but needs edits; 4 = clear with minor edits; 5 = accurate, clear and ready to send"
+  }
+]

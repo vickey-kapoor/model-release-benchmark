@@ -1,0 +1,9 @@
+[
+  {
+    "id": "example-private-reasoning",
+    "category": "reasoning",
+    "difficulty": "easy",
+    "prompt": "PRIVATE EXAMPLE: A box holds 12 pens. How many pens are in 7 boxes? End with a final line in the form 'ANSWER: <number>'.",
+    "answers": ["84"]
+  }
+]

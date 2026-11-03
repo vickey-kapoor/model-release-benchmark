@@ -1,0 +1,12 @@
+# Private tasks must never be committed. Publish only their hash.
+tasks/**/private/
+!tasks/examples/private/
+
+# Raw results can hold private tasks and grading keys. Publish `benchmark export` output instead.
+results/
+build/
+config/models.json
+
+.env
+__pycache__/
+*.pyc
