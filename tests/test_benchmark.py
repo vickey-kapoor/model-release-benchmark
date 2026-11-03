@@ -533,5 +533,58 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(all(v["label"] == "No clear change" for v in drift.values()))
 
 
+def load_sandbox_script():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("sandbox_score", ROOT / "scripts" / "sandbox_score.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class SandboxScoreTests(unittest.TestCase):
+    def setUp(self):
+        self.sandbox = load_sandbox_script()
+
+    def test_workers_match_container_cpus(self):
+        command = self.sandbox.sandbox_command("/suite-host", "/work-host", cpus=2)
+        self.assertEqual(command[command.index("--cpus") + 1], "2")
+        self.assertEqual(command[command.index("--workers") + 1], "2")
+        default = self.sandbox.sandbox_command("/suite-host", "/work-host")
+        self.assertEqual(default[default.index("--workers") + 1], str(self.sandbox.CPUS))
+
+    def test_score_cli_accepts_workers(self):
+        from benchmark.__main__ import build_parser
+        args = build_parser().parse_args(["score", "--suite", "s", "--run-dir", "r", "--workers", "1"])
+        self.assertEqual(args.workers, 1)
+
+    def test_reads_regular_scores_file(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder, "scores.jsonl")
+            path.write_bytes(b'{"score": 1.0}\n')
+            self.assertEqual(self.sandbox.read_sandbox_scores(path), b'{"score": 1.0}\n')
+
+    @unittest.skipUnless(hasattr(os, "symlink"), "needs symlinks")
+    def test_rejects_symlinked_scores_file(self):
+        with tempfile.TemporaryDirectory() as host, tempfile.TemporaryDirectory() as work:
+            secret = Path(host, "report.json")
+            secret.write_text("host secret", encoding="utf-8")
+            link = Path(work, "scores.jsonl")
+            try:
+                os.symlink(secret, link)
+            except OSError:
+                self.skipTest("can't create symlinks here")
+            with self.assertRaises(SystemExit) as raised:
+                self.sandbox.read_sandbox_scores(link)
+            self.assertIn("regular file", str(raised.exception))
+
+    def test_rejects_directory_and_missing_scores(self):
+        with tempfile.TemporaryDirectory() as work:
+            Path(work, "scores.jsonl").mkdir()
+            with self.assertRaises(SystemExit):
+                self.sandbox.read_sandbox_scores(Path(work, "scores.jsonl"))
+            with self.assertRaises(SystemExit):
+                self.sandbox.read_sandbox_scores(Path(work, "missing.jsonl"))
+
+
 if __name__ == "__main__":
     unittest.main()

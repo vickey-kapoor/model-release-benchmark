@@ -13,6 +13,7 @@ Requires Docker. The image is built from the Dockerfile on first use; pass
 
 import argparse
 import os
+import stat
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,10 @@ from pathlib import Path
 
 IMAGE = "model-release-benchmark-sandbox"
 ROOT = Path(__file__).resolve().parent.parent
+# CPUs given to the container. Scoring runs one worker per CPU: coding tests have a
+# wall-clock timeout, so extra workers sharing a CPU can make correct solutions time out.
+CPUS = 1
+MAX_SCORES_BYTES = 64 * 1024 * 1024
 
 
 def docker(*args, capture=False):
@@ -33,6 +38,57 @@ def ensure_image(rebuild):
         return
     if docker("build", "--tag", IMAGE, str(ROOT)).returncode != 0:
         raise SystemExit("docker build failed")
+
+
+def sandbox_command(suite, work_run, cpus=CPUS):
+    command = [
+        "run", "--rm",
+        "--network", "none",
+        "--read-only",
+        "--tmpfs", "/tmp:rw,size=256m",
+        "--cap-drop", "ALL",
+        "--security-opt", "no-new-privileges",
+        "--memory", "1g",
+        "--cpus", str(cpus),
+        "--pids-limit", "256",
+        "--volume", f"{suite}:/suite:ro",
+        "--volume", f"{work_run}:/run-dir",
+    ]
+    if hasattr(os, "getuid"):
+        # On Linux, write as the host user so the copied-back file stays editable.
+        command += ["--user", f"{os.getuid()}:{os.getgid()}"]
+    command += [IMAGE, "score", "--suite", "/suite", "--run-dir", "/run-dir", "--allow-code-exec",
+                "--workers", str(cpus)]
+    return command
+
+
+def read_sandbox_scores(path):
+    """Read scores.jsonl written in the sandbox, refusing anything but a regular file.
+
+    Model-written code can write to the run directory, so scores.jsonl may be a
+    symlink to a host path. Following it would copy a host file into the saved scores.
+    """
+    path = Path(path)
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        raise SystemExit("sandboxed scoring wrote no scores.jsonl; the original run directory is unchanged")
+    if not stat.S_ISREG(info.st_mode):
+        raise SystemExit("scores.jsonl from the sandbox isn't a regular file; refusing to copy it")
+    # O_NOFOLLOW closes the gap between the check above and the open, where it exists.
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError as error:
+        raise SystemExit(f"can't open scores.jsonl from the sandbox safely: {error}")
+    with os.fdopen(fd, "rb") as f:
+        opened = os.fstat(f.fileno())
+        if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino):
+            raise SystemExit("scores.jsonl from the sandbox changed while it was being read; refusing to copy it")
+        data = f.read(MAX_SCORES_BYTES + 1)
+    if len(data) > MAX_SCORES_BYTES:
+        raise SystemExit("scores.jsonl from the sandbox is implausibly large; refusing to copy it")
+    return data
 
 
 def main():
@@ -57,26 +113,11 @@ def main():
     with tempfile.TemporaryDirectory(prefix="sandbox-score-") as work:
         work_run = Path(work) / "run"
         shutil.copytree(run_dir, work_run)
-        command = [
-            "run", "--rm",
-            "--network", "none",
-            "--read-only",
-            "--tmpfs", "/tmp:rw,size=256m",
-            "--cap-drop", "ALL",
-            "--security-opt", "no-new-privileges",
-            "--memory", "1g",
-            "--cpus", "1",
-            "--pids-limit", "256",
-            "--volume", f"{suite}:/suite:ro",
-            "--volume", f"{work_run}:/run-dir",
-        ]
-        if hasattr(os, "getuid"):
-            # On Linux, write as the host user so the copied-back file stays editable.
-            command +=["--user", f"{os.getuid()}:{os.getgid()}"]
-        command += [IMAGE, "score", "--suite", "/suite", "--run-dir", "/run-dir", "--allow-code-exec"]
+        command = sandbox_command(suite, work_run)
         if docker(*command).returncode != 0:
             raise SystemExit("sandboxed scoring failed; the original run directory is unchanged")
-        shutil.copy2(work_run / "scores.jsonl", run_dir / "scores.jsonl")
+        data = read_sandbox_scores(work_run / "scores.jsonl")
+    (run_dir / "scores.jsonl").write_bytes(data)
     print(f"Wrote {run_dir / 'scores.jsonl'}")
 
 
