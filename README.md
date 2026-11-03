@@ -1,5 +1,9 @@
 # Model release benchmark
 
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
+[![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)](pyproject.toml)
+[![Status: pre-release, no published results](https://img.shields.io/badge/status-pre--release-orange)](BENCHMARK_PLAN.md)
+
 Tracks what changes with each GPT, Gemini and Claude release, against its predecessor and other vendors' current models. The protocol is in [BENCHMARK_PLAN.md](BENCHMARK_PLAN.md).
 
 It needs Python 3.11 or later and has no other dependencies.
