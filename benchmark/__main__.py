@@ -87,9 +87,28 @@ def cmd_run(args):
     print(json.dumps(summary, indent=2))
 
 
+def check_suite_matches_run(suite, run_dir, allow_change=False):
+    """Refuse to score a run with a suite other than the one it was made with, unless allowed."""
+    manifest_path = Path(run_dir) / "manifest.json"
+    if not manifest_path.is_file():
+        raise SystemExit(f"no manifest.json in {run_dir}; is this a run directory?")
+    manifest = read_json(manifest_path)
+    changed = [name for name in ("public", "private")
+               if manifest[f"suite_{name}_hash"] != getattr(suite, f"{name}_hash")]
+    if not changed:
+        return
+    message = (f"the suite's {' and '.join(changed)} hash doesn't match this run's manifest.json, "
+               "so it isn't the suite the run was made with")
+    if not allow_change:
+        raise SystemExit(message + ". Score with the original suite, or pass --allow-suite-change "
+                         "to score against this one on purpose (for example after fixing an answer key).")
+    print(f"Warning: {message}. Scoring against it anyway because of --allow-suite-change.", file=sys.stderr)
+
+
 def cmd_score(args):
-    summary = score_run(args.run_dir, load_checked_suite(args.suite), allow_code_exec=args.allow_code_exec,
-                        workers=args.workers)
+    suite = load_checked_suite(args.suite)
+    check_suite_matches_run(suite, args.run_dir, allow_change=args.allow_suite_change)
+    summary = score_run(args.run_dir, suite, allow_code_exec=args.allow_code_exec, workers=args.workers)
     print(json.dumps(summary, indent=2))
 
 
@@ -157,6 +176,8 @@ def build_parser():
                      help="run model-written code; only do this inside a disposable container or VM")
     sub.add_argument("--workers", type=int, default=8,
                      help="records scored at once; keep it at or below the CPUs available to coding tests")
+    sub.add_argument("--allow-suite-change", action="store_true",
+                     help="score even if the suite's hashes differ from the run's manifest.json")
 
     sub = command("grade-export", cmd_grade_export, "create a blind grading packet")
     sub.add_argument("--suite", required=True)

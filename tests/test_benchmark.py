@@ -533,6 +533,49 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(all(v["label"] == "No clear change" for v in drift.values()))
 
 
+class ScoreSuiteCheckTests(unittest.TestCase):
+    def setUp(self):
+        from benchmark.__main__ import check_suite_matches_run
+        self.check = check_suite_matches_run
+        self.suite = load_suite(EXAMPLES)
+        self.folder = tempfile.TemporaryDirectory()
+        self.run_dir = Path(self.folder.name)
+        self.addCleanup(self.folder.cleanup)
+
+    def write_manifest(self, public, private):
+        Path(self.run_dir, "manifest.json").write_text(
+            json.dumps({"suite_public_hash": public, "suite_private_hash": private}), encoding="utf-8")
+
+    def test_matching_suite_passes(self):
+        self.write_manifest(self.suite.public_hash, self.suite.private_hash)
+        self.check(self.suite, self.run_dir)
+
+    def test_changed_suite_is_refused(self):
+        self.write_manifest("old-public", self.suite.private_hash)
+        with self.assertRaises(SystemExit) as raised:
+            self.check(self.suite, self.run_dir)
+        self.assertIn("public hash", str(raised.exception))
+        self.assertIn("--allow-suite-change", str(raised.exception))
+
+    def test_changed_suite_allowed_with_flag(self):
+        self.write_manifest("old-public", "old-private")
+        with mock.patch("sys.stderr") as stderr:
+            self.check(self.suite, self.run_dir, allow_change=True)
+        self.assertIn("public and private", "".join(c.args[0] for c in stderr.write.call_args_list))
+
+    def test_missing_manifest_is_refused(self):
+        with self.assertRaises(SystemExit):
+            self.check(self.suite, self.run_dir)
+
+    def test_score_command_checks_suite(self):
+        from benchmark.__main__ import build_parser
+        self.write_manifest("old-public", self.suite.private_hash)
+        args = build_parser().parse_args(["score", "--suite", str(EXAMPLES), "--run-dir", str(self.run_dir)])
+        with self.assertRaises(SystemExit):
+            args.handler(args)
+        self.assertFalse(Path(self.run_dir, "scores.jsonl").exists())
+
+
 def load_sandbox_script():
     import importlib.util
     spec = importlib.util.spec_from_file_location("sandbox_score", ROOT / "scripts" / "sandbox_score.py")
@@ -551,6 +594,9 @@ class SandboxScoreTests(unittest.TestCase):
         self.assertEqual(command[command.index("--workers") + 1], "2")
         default = self.sandbox.sandbox_command("/suite-host", "/work-host")
         self.assertEqual(default[default.index("--workers") + 1], str(self.sandbox.CPUS))
+        self.assertNotIn("--allow-suite-change", default)
+        allowed = self.sandbox.sandbox_command("/suite-host", "/work-host", allow_suite_change=True)
+        self.assertEqual(allowed[-1], "--allow-suite-change")
 
     def test_score_cli_accepts_workers(self):
         from benchmark.__main__ import build_parser

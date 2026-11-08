@@ -40,7 +40,7 @@ def ensure_image(rebuild):
         raise SystemExit("docker build failed")
 
 
-def sandbox_command(suite, work_run, cpus=CPUS):
+def sandbox_command(suite, work_run, cpus=CPUS, allow_suite_change=False):
     command = [
         "run", "--rm",
         "--network", "none",
@@ -59,6 +59,8 @@ def sandbox_command(suite, work_run, cpus=CPUS):
         command += ["--user", f"{os.getuid()}:{os.getgid()}"]
     command += [IMAGE, "score", "--suite", "/suite", "--run-dir", "/run-dir", "--allow-code-exec",
                 "--workers", str(cpus)]
+    if allow_suite_change:
+        command.append("--allow-suite-change")
     return command
 
 
@@ -96,6 +98,8 @@ def main():
     parser.add_argument("--suite", required=True)
     parser.add_argument("--run-dir", required=True)
     parser.add_argument("--rebuild", action="store_true", help="rebuild the image first")
+    parser.add_argument("--allow-suite-change", action="store_true",
+                        help="score even if the suite's hashes differ from the run's manifest.json")
     args = parser.parse_args()
 
     suite = Path(args.suite).resolve()
@@ -113,7 +117,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="sandbox-score-") as work:
         work_run = Path(work) / "run"
         shutil.copytree(run_dir, work_run)
-        command = sandbox_command(suite, work_run)
+        command = sandbox_command(suite, work_run, allow_suite_change=args.allow_suite_change)
         if docker(*command).returncode != 0:
             raise SystemExit("sandboxed scoring failed; the original run directory is unchanged")
         data = read_sandbox_scores(work_run / "scores.jsonl")

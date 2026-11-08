@@ -40,6 +40,7 @@ Open `build/demo/site/index.html` to see the site. Demo scores are fake, use fic
    ```
    python -m benchmark score --suite tasks/suite --run-dir results/baseline --allow-code-exec
    ```
+   `score` refuses a suite whose hashes differ from the run's `manifest.json`. To rescore on purpose with a changed suite, such as after fixing an answer key, add `--allow-suite-change`. The run's manifest keeps the original hashes, so `report`, `export` and `site` still group the run with the suite it was made with.
 7. **Grade the writing outputs.** Give each grader a copy of `packet.csv`, and keep `key.json` away from them. Scores use a 1–5 scale. Gaps of more than one point need a third, adjudicated file.
    ```
    python -m benchmark grade-export --suite tasks/suite --run-dir results/baseline --out results/baseline/grading
