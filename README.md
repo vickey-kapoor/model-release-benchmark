@@ -1,5 +1,7 @@
 # Model release benchmark
 
+> **Archived.** This benchmark has moved into [Operon](https://github.com/vickey-kapoor/operon) (`evals/leaderboard/`), and new work happens there. This repository is kept read-only for reference.
+
 [![tests](https://github.com/vickey-kapoor/model-release-benchmark/actions/workflows/tests.yml/badge.svg)](https://github.com/vickey-kapoor/model-release-benchmark/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Results: CC BY 4.0](https://img.shields.io/badge/results-CC%20BY%204.0-lightgrey)](https://creativecommons.org/licenses/by/4.0/)
